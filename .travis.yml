@@ -1,0 +1,11 @@
+# 每次使用docker的时候, 需要有超级管理员权限
+sudo: required
+services:
+  - docker:
+
+# 这里在安装之前有一系列的命令需要去执行
+before_install:
+  - docker build -t  mumu-pika/docker_react -f dockerfile.dev .
+
+script:
+  - docker run mumu-pika/docker_react npm run test -- --coverage
