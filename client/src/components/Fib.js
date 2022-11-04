@@ -31,9 +31,8 @@ function Fib(props) {
     let newIndexes = fetchIndexes()
 
     // check data
-    if (!newValue)setValues(newValue)
+    if (!newValue) setValues(newValue)
     if (!newIndexes) setSeenIndexes([...newIndexes])
-
   }, [])
 
   // render values
@@ -84,9 +83,9 @@ function Fib(props) {
         {seenIndexes.map(number => <li> {number} </li>)}
       </ul>
       <h3>Calculated Values:</h3>
-      <ul>
+      {/* <ul>
         {values.map((value, index) => (<li>For index {values.index} I calculate {value} </li>))}
-      </ul>
+      </ul> */}
     </div>
   )
 }
