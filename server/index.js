@@ -22,8 +22,9 @@ app.use(bodyParser.json())
   It's not going to actually store the calculated
   values or anything like that.
 */
+// https://node-postgres.com/features/pooling
 const { Pool } = require('pg')
-const pgClient = new Pool({
+const pool = new Pool({
   user: keys.pgUser,
   host: keys.pgHost,
   database: keys.pgDatabase,
@@ -32,13 +33,31 @@ const pgClient = new Pool({
 })
 
 // listener
-pgClient.on('error', () => console.log('Lost PGSQL Connection!'))
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client', err)
+  process.exit(-1)
+})
 
 // create a table inside the database that house information
 // table name : values, and a single column name: number.
-pgClient
-  .query('CREATE TABLE IF NOT EXISTS values (number INT)')
-  .catch((err) => console.log(err))
+pool
+  .connect()
+  .then(client => {
+    return client
+      .query('CREATE TABLE IF NOT EXISTS values (number INT)')
+      .then(res => {
+        client.release()
+        // console.log(res.rows[0])
+      })
+      .catch(err => {
+        client.release()
+        console.log(err.stack)
+      })
+  })
+
+// pool
+//   .query('CREATE TABLE IF NOT EXISTS values (number INT)')
+//   .catch((err) => console.log(err))
 
 // Redis Client Setup
 const redis = require('redis')
@@ -64,7 +83,7 @@ app.get('/', (req, res) => {
 
 // query a running pgsql instance and retrieve values
 app.get('/values/all', async (req, res) => {
-  const values = await pgClient.query('SELECT * from values')
+  const values = await pool.query('SELECT * from values')
   res.send(values.rows)
 })
 
@@ -72,7 +91,7 @@ app.get('/values/all', async (req, res) => {
 app.get('/values/current', async (req, res) => {
   // look at the hashvalue inside the Redis instance and get all.
   redisClient.hgetall('values', (err, val) => {
-    res.send(values)
+    res.send(val)
   })
 })
 
@@ -88,7 +107,7 @@ app.post('/values', async (req, res) => {
   redisPublisher.publish('insert', index)
 
   // store permanent record
-  pgClient.query('INSERT INTO values(number) VALUES($1)', [index])
+  pool.query('INSERT INTO values(number) VALUES($1)', [index])
 
   // we're doing some work to calculate
   res.send({ working: true })
@@ -96,5 +115,5 @@ app.post('/values', async (req, res) => {
 
 // listen the port
 app.listen(5000, err => {
-  console.log("Server listening on port 5050")
+  console.log("Server listening on port 5000")
 })
